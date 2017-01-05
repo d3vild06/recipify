@@ -19,31 +19,48 @@ const knex = require('knex')({
 app.get('/recipes', (req, res) => {
   knex.select('recipes.id', 'recipes.name', 'tags.tag', 'steps.description')
   .from('recipes')
-  .join('recipe_tags', 'recipe_tags.recipe_id', 'recipes.id')
-  .join('steps', 'steps.recipe_id', 'recipes.id')
+  .fullOuterJoin('recipe_tags', 'recipe_tags.recipe_id', 'recipes.id')
+  .leftOuterJoin('tags', 'recipe_tags.tag_id', 'tags.id')
+  .leftOuterJoin('steps', 'steps.recipe_id', 'recipes.id')
   .then(function(rows) {
     let recipesObj = {};
     rows.forEach(row => {
+      console.log(row);
+      if(!(row.id in recipesObj)) {
       recipesObj[row.id] = {
         name: row.name,
-        steps: [],
-        tags: []
+        steps: row.description ? [row.description] : [],
+        tags: row.tag ? [row.tag] : []
       }
-      return recipesObj;
-    });
-
-  rows.forEach(row => {
-    for (var prop in recipesObj) {
-      if (row.id == prop) {
-        // console.log(typeof recipesObj[row.id].steps);
-        recipesObj[row.id].steps.push(row.description);
-        recipesObj[row.id].tags.push(row.tag);
-      }
+      return;
     }
-    return recipesObj;
+    let steps = recipesObj[row.id].steps;
+    let tags = recipesObj[row.id].tags;
+    if (!steps.includes(row.description) || !tags.includes(row.tag)) {
+      steps.push(row.description);
+      tags.push(row.tag);
+    }
   });
 
-    res.status(200).json(recipesObj);
+
+
+  // rows.forEach(row => {
+  //   console.log(row);
+  //   for (var id in recipesObj) {
+  //     if (row.id == id) {
+  //       let steps = recipesObj[id].steps;
+  //       let tags = recipesObj[id].tags;
+  //       if (!steps.includes(row.description) || !tags.includes(row.tag)) {
+  //         steps.push(row.description);
+  //         tags.push(row.tag);
+  //       }
+  //     }
+  //   }
+  //   return recipesObj;
+  // });
+
+    //res.status(200).json(recipesObj);
+    res.json(Object.keys(recipesObj).map(key => recipesObj[key]));
   });
 });
 
